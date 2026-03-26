@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AI Trainer</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="container">
+    <h1>🚀 AI Model Trainer</h1>
+
+    <p>Describe what you want your AI model to do</p>
+
+    <input type="text" id="inputText" placeholder="e.g. I want to classify text">
+    <button onclick="interpret()">Analyze</button>
+
+    <h3 id="result"></h3>
+
+    <!-- Confirmation Box -->
+    <div id="confirmBox" class="card" style="display:none;">
+        <p>Do you want to train your model like this?</p>
+        <button onclick="confirmTrain()">Confirm</button>
+        <button class="secondary" onclick="editInput()">Edit</button>
+    </div>
+
+    <!-- Upload Section -->
+    <div id="modeSelection" class="card" style="display:none;">
+    <h3>Select Training Mode</h3>
+
+    <button onclick="selectManual()">📁 Upload Dataset (Recommended)</button>
+    <button onclick="selectAuto()">🤖 Automatic Mode</button>
+</div>
+
+<div id="warningBox" class="card" style="display:none; color: red;">
+    <p>
+        ⚠️ Automatic Mode (Experimental)<br>
+        - AI will collect & label data<br>
+        - Accuracy may be low<br>
+        - Use for testing only
+    </p>
+
+    <button onclick="confirmAuto()">I Understand</button>
+</div>
+
+<div id="uploadSection" class="card" style="display:none;">
+    <h3>Upload Dataset</h3>
+    <input type="file" id="fileInput" multiple>
+    <button type="button" id="trainBtn">Train Model</button>
+</div>
+
+<script src="script.js"></script>
+
+</body>
+</html>
