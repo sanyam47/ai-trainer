@@ -64,5 +64,7 @@ class TextClassificationPipeline(ModelPipeline):
 
         joblib.dump(model, model_path)
         joblib.dump(vectorizer, vectorizer_path)
+        # Also save a model-specific vectorizer so predictions always find the right one
+        joblib.dump(vectorizer, "models/model_vectorizer.pkl")
 
         return model_path, round(accuracy, 3), "Training successful"

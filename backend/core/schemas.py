@@ -20,3 +20,33 @@ class JobStatusResponse(BaseModel):
     intent: Optional[dict] = None
     model_path: Optional[str] = None
     message: Optional[str] = None
+
+class LabRequest(BaseModel):
+    model_name: str
+    instruction: str
+
+class LabAnalysis(BaseModel):
+    action: str  # REFINE, ADD_CLASS, REMOVE_CLASS, TWEAK_PARAMS
+    modality: str
+    target_classes: List[str]
+    new_labels: Optional[List[str]] = []
+    remove_labels: Optional[List[str]] = []
+    reasoning: Optional[str] = "Interpreted from instruction"
+    message: str
+
+class LabChatRequest(BaseModel):
+    model_name: str
+    feedback: str
+    previous_analysis: LabAnalysis
+    history: Optional[List[dict]] = []
+
+class LabExecutionRequest(BaseModel):
+    model_name: str
+    instruction: str
+    analysis: LabAnalysis
+    injected_file_path: Optional[str] = None
+    auto_fill_gaps: Optional[bool] = False
+
+class LabPredictRequest(BaseModel):
+    model_name: str
+    text: str

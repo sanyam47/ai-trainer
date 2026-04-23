@@ -1,4 +1,5 @@
 from celery import shared_task
+from sqlalchemy.orm import Session
 from backend.workers.celery_app import celery_app
 from backend.db.database import SessionLocal
 from backend.db.models import Job
@@ -37,7 +38,7 @@ def run_auto_train_pipeline(job_id: str):
         task_type = intent.get("task", "classification")
         
         # 1. Fetch data (Auto mode always uses internet)
-        df = build_dataset(intent.get("task", ""), intent.get("target_classes", []))
+        df = build_dataset(intent.get("task", ""), intent.get("target_classes", []), modality)
         if df.empty:
             raise ValueError("No data fetched from internet")
             
@@ -97,3 +98,38 @@ def run_manual_train_pipeline(job_id: str, filepath: str):
         db.commit()
     finally:
         db.close()
+@celery_app.task
+def run_refine_pipeline(job_id: str):
+    db: Session = SessionLocal()
+    job = db.query(Job).filter(Job.id == job_id).first()
+    if not job:
+        db.close()
+        return
+
+    job.status = "running"
+    db.commit()
+
+    try:
+        from backend.pipelines.refine_pipeline import RefinePipeline
+        data = job.intent
+        model_name = data.get("model_name")
+        analysis = data.get("analysis")
+        
+        refiner = RefinePipeline(model_name)
+        model_path, accuracy, report = refiner.execute(data)
+        
+        if model_path:
+            job.status = "completed"
+            job.model_path = os.path.basename(model_path)
+            job.accuracy = report # Store full analytics JSON
+            job.message = "Refinement complete. Comparison report generated."
+        else:
+            job.status = "failed"
+            job.message = message
+            
+    except Exception as e:
+        job.status = "failed"
+        job.message = str(e)
+    
+    db.commit()
+    db.close()

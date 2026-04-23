@@ -2,11 +2,27 @@
 <html>
 <head>
     <title>AI Trainer</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
 
-<div class="container">
+<div class="tabs" style="position: relative; z-index: 9999;">
+    <button id="btn-train" class="tab-btn active" onclick="
+        document.getElementById('train-section').style.display='block';
+        document.getElementById('lab-section').style.display='none';
+        this.classList.add('active');
+        document.getElementById('id-lab-btn').classList.remove('active');
+    ">🚀 Train AI</button>
+    <button id="id-lab-btn" class="tab-btn" onclick="
+        document.getElementById('train-section').style.display='none';
+        document.getElementById('lab-section').style.display='block';
+        this.classList.add('active');
+        document.getElementById('btn-train').classList.remove('active');
+        if(window.refreshLabModels) refreshLabModels();
+    ">🧠 Model Lab</button>
+</div>
+
+<div id="train-section" class="container">
     <h1>🚀 AI Model Trainer</h1>
 
     <p>Describe what you want your AI model to do</p>
@@ -48,7 +64,147 @@
     <button type="button" id="trainBtn">Train Model</button>
 </div>
 
-<script src="script.js"></script>
+<!-- Train Testing Playground -->
+<div id="trainTestingSection" class="card" style="display: none; margin-top: 20px; border-top: 4px solid #4ade80;">
+    <h3 style="margin-bottom: 15px; color: #4ade80;">🧪 Live Testing Playground</h3>
+    <p style="font-size: 0.85rem; color: #ccc; margin-bottom: 15px;">Test your newly trained model instantly.</p>
+    
+    <div id="trainDynamicInputContainer" style="display: flex; gap: 10px; margin-bottom: 15px;">
+        <input type="text" id="trainTestTextInput" placeholder="Enter text to predict..." style="flex-grow: 1;">
+        <input type="file" id="trainTestFileInput" style="display: none; flex-grow: 1;">
+        <button class="primary" onclick="testTrainModel()" style="width: auto; padding: 0 20px;">Predict</button>
+    </div>
+
+    <div id="trainTestResult" style="display: none; padding: 15px; background: rgba(0,0,0,0.3); border-radius: 8px;">
+        <div style="font-size: 1.2rem; font-weight: bold; color: #fff; margin-bottom: 5px;">
+            Prediction: <span id="trainTestPredictionText" style="color: #4ade80;"></span>
+        </div>
+        <div style="font-size: 0.9rem; color: #aaa;">
+            Confidence: <span id="trainTestConfidenceText"></span>%
+        </div>
+        <div id="trainTestProbabilities" style="margin-top: 10px; font-size: 0.8rem; color: #888;"></div>
+    </div>
+
+    <!-- Evaluate & Re-train Loop -->
+    <div id="trainEvaluateSection" style="margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.1);">
+        <h4 style="color: #facc15; margin-bottom: 10px;">⚠️ Is this model acting weird?</h4>
+        <p style="font-size: 0.85rem; color: #aaa; margin-bottom: 10px;">If the model is failing, tell the AI how to fix it and re-evaluate.</p>
+        
+        <textarea id="trainRefineInstruction" placeholder="e.g., 'It confuses dogs with lions. Add a lion class.'" style="margin-bottom: 10px;"></textarea>
+        
+        <div style="background: rgba(0, 123, 255, 0.1); border: 1px solid rgba(0, 123, 255, 0.3); padding: 10px; border-radius: 6px; margin-bottom: 10px;">
+            <p style="font-size: 0.85rem; color: #ccc; margin-bottom: 5px;">Inject correct data (Optional):</p>
+            <input type="file" id="trainRefineData" accept=".csv" style="width: 100%; margin-bottom: 5px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <input type="checkbox" id="trainRefineAutoFill" checked>
+                <label style="font-size: 0.8rem;">Auto-fill gaps with AI</label>
+            </div>
+        </div>
+
+        <button class="secondary" onclick="refineTrainModel()" style="width: 100%; border-color: #facc15; color: #facc15;">🔄 Re-Evaluate & Train</button>
+    </div>
+</div>
+
+</div>
+
+<div id="lab-section" class="container" style="display: none;">
+    <h1>🧠 AI Model Lab</h1>
+    <p>Upload or select a model to manipulate</p>
+
+    <div class="input-card">
+        <label>Select Model:</label>
+        <div style="display: flex; gap: 10px;">
+            <select id="labModelSelect" class="styled-select" style="flex: 1;">
+                <option value="">-- Load a .pkl --</option>
+            </select>
+            <button onclick="viewLineage()" style="width: auto; padding: 0 15px; background: #444; margin: 0;">📜 Lineage</button>
+        </div>
+
+        <div style="margin-top:10px;">
+            <label class="secondary-btn" style="display: inline-block; cursor: pointer; padding: 10px 20px; background: #444; border-radius: 8px; font-size: 0.9rem; text-align: center; border: 1px solid #666; transition: 0.3s;">
+                📤 Upload External .pkl
+                <input type="file" id="labModelUpload" accept=".pkl" style="display:none;" onchange="uploadLabModel()">
+            </label>
+            <div id="labUploadStatus" style="display:none; margin-top:10px; font-size:0.85rem; padding:8px; background:rgba(0,123,255,0.1); border-radius:6px; border:1px solid rgba(0,123,255,0.3); color:#60a5fa; animation: pulse 1.5s infinite;">
+                <!-- Filename will appear here -->
+            </div>
+        </div>
+        
+        <p style="margin-top:20px;">Describe the modification (e.g., "Add finance class", "Remove spam"):</p>
+        <textarea id="labInstruction" placeholder="Instruct the AI to manipulate the model..."></textarea>
+        
+        <button id="analyzeLabBtn">Analyze Experiment</button>
+    </div>
+
+        <div id="labProposal" style="display: none; margin-top: 20px; padding: 20px; background: rgba(255,255,255,0.05); border-radius: 12px; border: 1px solid rgba(0, 123, 255, 0.3);">
+            <h3 style="color: #007bff; margin-bottom: 15px;">🔬 Intelligence Manipulation Plan</h3>
+            <div id="labActionText" style="line-height: 1.6; margin-bottom: 20px; padding: 15px; background: rgba(0,0,0,0.2); border-radius: 8px;"></div>
+            
+            <!-- Refinement Section -->
+            <div id="labChatContainer" style="margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.1);">
+                <p style="font-size: 0.9rem; color: #aaa; margin-bottom: 10px;">💬 <b>Refine Requirements with AI:</b></p>
+                <div style="display: flex; gap: 10px; width: 100%;">
+                    <input type="text" id="labChatInput" placeholder="e.g., 'Don't remove the cat class'..." style="flex-grow: 1; min-width: 0; padding: 10px;">
+                    <button onclick="sendLabFeedback()" style="width: auto; padding: 0 20px;">Refine</button>
+                </div>
+            </div>
+            
+            <!-- Injection Section -->
+            <div style="margin-top: 15px; padding: 15px; background: rgba(0, 123, 255, 0.1); border: 1px solid rgba(0, 123, 255, 0.3); border-radius: 8px;">
+                <p style="font-size: 0.95rem; color: #fff; margin-bottom: 10px;">📤 <b>Inject Custom Knowledge Base:</b></p>
+                <input type="file" id="labDataInjection" accept=".csv" style="width: 100%; font-size: 0.85rem; color: #ccc; margin-bottom: 10px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <input type="checkbox" id="labAutoFillGaps" checked style="width: 18px; height: 18px;">
+                    <label for="labAutoFillGaps" style="font-size: 0.85rem; color: #aaa;">Auto-fill gaps with AI data if your dataset is thin</label>
+                </div>
+                
+                <div id="labIntelligenceAlert" style="display: none; margin-top: 12px; padding: 12px; background: rgba(255, 165, 0, 0.15); border: 1px solid orange; border-radius: 6px; color: orange; font-size: 0.85rem;">
+                    ⚠️ <span id="labAlertMessage"></span>
+                </div>
+            </div>
+
+            <button id="executeLabBtn" class="primary" style="width: 100%; margin-top: 20px; padding: 15px; font-weight: bold; font-size: 1rem;">🚀 Execute Deep Manipulation</button>
+        </div>
+
+    <div id="labResult" class="card status-card">
+        <p>Waiting for experiment...</p>
+    </div>
+
+    <!-- Live Testing Playground -->
+    <div class="card" style="margin-top: 20px; border-top: 4px solid #60a5fa;">
+        <h3 style="margin-bottom: 15px; color: #60a5fa;">🧪 Live Testing Playground</h3>
+        <p style="font-size: 0.85rem; color: #ccc; margin-bottom: 15px;">Test your currently selected model instantly.</p>
+        
+        <div id="labDynamicInputContainer" style="display: flex; gap: 10px;">
+            <input type="text" id="labTestInput" placeholder="Enter text to predict..." style="flex-grow: 1;">
+            <input type="file" id="labTestFileInput" style="display: none; flex-grow: 1;">
+            <button class="primary" onclick="testLabModel()" style="width: auto; padding: 0 20px;">Predict</button>
+        </div>
+
+        <div id="labTestResult" style="display: none; margin-top: 15px; padding: 15px; background: rgba(0,0,0,0.3); border-radius: 8px;">
+            <div style="font-size: 1.2rem; font-weight: bold; color: #fff; margin-bottom: 5px;">
+                Prediction: <span id="testPredictionText" style="color: #4ade80;"></span>
+            </div>
+            <div style="font-size: 0.9rem; color: #aaa;">
+                Confidence: <span id="testConfidenceText"></span>%
+            </div>
+            <div id="testProbabilities" style="margin-top: 10px; font-size: 0.8rem; color: #888;"></div>
+        </div>
+    </div>
+
+    <!-- Lineage Modal -->
+    <div id="lineageModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center;">
+        <div class="card" style="width: 80%; max-width: 600px; max-height: 80vh; overflow-y: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #444; padding-bottom: 10px;">
+                <h3>📜 Model Evolution Tree</h3>
+                <button onclick="closeLineage()" style="width: auto; padding: 0 10px; background: transparent; color: red;">✕</button>
+            </div>
+            <div id="lineageContent" style="margin-top: 20px;"></div>
+        </div>
+    </div>
+</div>
+
+<script src="/static/script.js?v=14"></script>
 
 </body>
 </html>

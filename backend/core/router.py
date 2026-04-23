@@ -18,10 +18,40 @@ def interpret_intent(user_text: str) -> IntentAnalysis:
         )
         return completion.choices[0].message.parsed
     except Exception as e:
-        print(f"Error extracting intent: {e}")
-        # Default fallback
+        print(f"Offline Mode or API Error: {e}")
+        
+        # --- Smart Keyword Detection (FREE!) ---
+        text = user_text.lower()
+        
+        # 1. Modality detection
+        modality = "text"
+        if any(w in text for w in ["image", "picture", "photo", "dog", "cat", "animal", "face"]):
+            modality = "image"
+        elif any(w in text for w in ["audio", "sound", "voice", "song", "bark"]):
+            modality = "audio"
+        elif any(w in text for w in ["price", "demand", "number", "score", "predict"]):
+            modality = "numeric"
+
+        # 2. Task detection
+        task = "classification"
+        if any(w in text for w in ["price", "demand", "value", "how much"]):
+            task = "regression"
+
+        # 3. Target Class extraction (Simple list-based)
+        common_classes = {
+            "dog": "dog", "cat": "cat", "animal": "animal",
+            "spam": "spam", "urgent": "urgent", "ham": "ham",
+            "criminal": "criminal", "property": "property", "financial": "financial",
+            "positive": "positive", "negative": "negative"
+        }
+        found_classes = [v for k, v in common_classes.items() if k in text]
+        
+        # Fallback if no classes found
+        if not found_classes:
+            found_classes = ["class_a", "class_b"]
+
         return IntentAnalysis(
-            modality="text",
-            task="classification",
-            target_classes=["criminal", "property", "financial"]
+            modality=modality,
+            task=task,
+            target_classes=found_classes
         )

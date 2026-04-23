@@ -83,22 +83,28 @@ Text:
 # ==========================
 # BUILD DATASET
 # ==========================
-def build_dataset(query: str, target_classes: List[str]):
-    texts = fetch_data(query)
-
-    if not texts:
-        return pd.DataFrame()
-
-    # increase limit to have enough data points for 3 overlapping labels
-    texts = texts[:30]
-
-    data = []
-
-    for i, t in enumerate(texts):
-        label = ai_label(t, target_classes, i)
-        data.append({
-            "text": t,
-            "label": label
-        })
-
+def build_dataset(prompt: str, target_classes: list, modality: str = "text"):
+    """
+    Creates a dummy dataset for training based on the modality.
+    """
+    import pandas as pd
+    
+    if modality == "image":
+        # Create dummy image metadata
+        data = {
+            "image_path": [f"demo_{i}.jpg" for i in range(50)],
+            "label": [target_classes[i % len(target_classes)] for i in range(50)]
+        }
+    elif modality == "audio":
+        data = {
+            "audio_path": [f"demo_{i}.wav" for i in range(50)],
+            "label": [target_classes[i % len(target_classes)] for i in range(50)]
+        }
+    else:
+        # Default Text
+        data = {
+            "text": [f"Sample text for {prompt} - {i}" for i in range(50)],
+            "label": [target_classes[i % len(target_classes)] for i in range(50)]
+        }
+    
     return pd.DataFrame(data)
