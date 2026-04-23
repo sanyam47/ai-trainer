@@ -9,6 +9,7 @@ from backend.db.database import engine, Base, get_db
 from backend.db.models import Job
 from backend.workers.tasks import run_auto_train_pipeline, run_manual_train_pipeline
 from backend.api import lab_router
+from backend.core.paths import FRONTEND_DIR
 import os
 import shutil
 from uuid import uuid4
@@ -90,10 +91,10 @@ def download_model(job_id: str = None, db: Session = Depends(get_db)):
         return FileResponse(model_path, filename="model.pkl")
     raise HTTPException(status_code=404, detail="No trained models found")
 
-# Add static file serving (MAX STABILITY)
-app.mount("/static", StaticFiles(directory="C:/coding/ai-trainer/frontend"), name="static")
+# Serve frontend assets from project-relative path (works locally and on cloud hosts)
+app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
 
 @app.get("/")
 def read_index():
     from fastapi.responses import FileResponse
-    return FileResponse("C:/coding/ai-trainer/frontend/index.html")
+    return FileResponse(os.path.join(FRONTEND_DIR, "index.html"))

@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: ai-trainer
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: bash -lc "python -m celery -A backend.workers.celery_app worker --loglevel=info --pool=solo & uvicorn backend.api.main:app --host 0.0.0.0 --port $PORT"
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: SERP_API_KEY
+        sync: false

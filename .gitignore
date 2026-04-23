@@ -18,7 +18,13 @@ ENV/
 **/broker/
 **/uploads/
 **/models/
-**/requirements.txt
+**/lab_sessions/
+**/control/
+*.pidbox.exchange
+*_log.txt
+CRASH_LOG.txt
+stress_test_report.txt
+test_model_upload.pkl
 
 # OS generated files
 .DS_Store

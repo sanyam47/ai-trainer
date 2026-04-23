@@ -54,5 +54,21 @@ python -m uvicorn backend.api.main:app --reload --port 8001
 
 Access the UI at: `http://localhost:8001`
 
+## Deploy Free on Render
+
+This repo includes `render.yaml`, so you can deploy without keeping your PC on:
+
+1. Push latest code to GitHub.
+2. In Render, click **New +** -> **Blueprint**.
+3. Select this repository and deploy.
+4. Add secrets when prompted:
+   - `OPENAI_API_KEY`
+   - `SERP_API_KEY` (optional)
+5. Open the generated URL and share it.
+
+Notes:
+- The web service runs FastAPI + Celery worker in one free instance for simple demos/reviews.
+- Free instances may sleep after inactivity; first request can take ~30-60s.
+
 ## 🔐 Security
 This project is configured to safely exclude sensitive data (`.db`, `.env`, `models/`, `uploads/`) from version control via `.gitignore`. 
