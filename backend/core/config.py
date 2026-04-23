@@ -2,6 +2,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 import os
 
 class Settings(BaseSettings):
+    USE_OPENAI: bool = False
     OPENAI_API_KEY: str = "FILL_ME_IN"
     SERP_API_KEY: str = "FILL_ME_IN"
     

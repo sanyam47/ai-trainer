@@ -15,7 +15,7 @@ import json
 from backend.core.paths import MODELS_DIR, LAB_SESSIONS_DIR
 
 router = APIRouter(prefix="/lab", tags=["Model Lab"])
-client = OpenAI(api_key=settings.OPENAI_API_KEY)
+client = OpenAI(api_key=settings.OPENAI_API_KEY) if settings.USE_OPENAI else None
 validator = DataValidator()
 
 @router.post("/inject")
@@ -130,6 +130,8 @@ def analyze_lab_instruction(req: LabRequest):
     """
     
     try:
+        if client is None:
+            raise RuntimeError("OpenAI disabled by configuration")
         completion = client.beta.chat.completions.parse(
             model="gpt-4o-mini",
             messages=[
@@ -204,6 +206,8 @@ def refine_lab_instruction(req: LabChatRequest):
     """
     
     try:
+        if client is None:
+            raise RuntimeError("OpenAI disabled by configuration")
         completion = client.beta.chat.completions.parse(
             model="gpt-4o-mini",
             messages=[

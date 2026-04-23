@@ -2,11 +2,13 @@ from openai import OpenAI
 from backend.core.config import settings
 from backend.core.schemas import IntentAnalysis
 
-client = OpenAI(api_key=settings.OPENAI_API_KEY)
+client = OpenAI(api_key=settings.OPENAI_API_KEY) if settings.USE_OPENAI else None
 
 def interpret_intent(user_text: str) -> IntentAnalysis:
     """Uses OpenAI's structured outputs to extract intent from user text."""
     try:
+        if client is None:
+            raise RuntimeError("OpenAI disabled by configuration")
         completion = client.beta.chat.completions.parse(
             model="gpt-4o-mini",
             messages=[

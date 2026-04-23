@@ -4,7 +4,7 @@ from openai import OpenAI
 from backend.core.config import settings
 from typing import List
 
-client = OpenAI(api_key=settings.OPENAI_API_KEY)
+client = OpenAI(api_key=settings.OPENAI_API_KEY) if settings.USE_OPENAI else None
 
 # ==========================
 # FETCH DATA FROM INTERNET
@@ -46,6 +46,8 @@ def simple_label(text: str, target_classes: List[str], fallback_index: int = 0) 
 # ==========================
 def ai_label(text: str, target_classes: List[str], fallback_index: int = 0) -> str:
     try:
+        if client is None:
+            raise RuntimeError("OpenAI disabled by configuration")
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[{
