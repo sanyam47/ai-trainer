@@ -91,22 +91,26 @@ def build_dataset(prompt: str, target_classes: list, modality: str = "text"):
     """
     import pandas as pd
     
+    safe_classes = [str(c).strip() for c in (target_classes or []) if str(c).strip()]
+    if not safe_classes:
+        safe_classes = ["class_a", "class_b"]
+
     if modality == "image":
         # Create dummy image metadata
         data = {
             "image_path": [f"demo_{i}.jpg" for i in range(50)],
-            "label": [target_classes[i % len(target_classes)] for i in range(50)]
+            "label": [safe_classes[i % len(safe_classes)] for i in range(50)]
         }
     elif modality == "audio":
         data = {
             "audio_path": [f"demo_{i}.wav" for i in range(50)],
-            "label": [target_classes[i % len(target_classes)] for i in range(50)]
+            "label": [safe_classes[i % len(safe_classes)] for i in range(50)]
         }
     else:
         # Default Text
         data = {
             "text": [f"Sample text for {prompt} - {i}" for i in range(50)],
-            "label": [target_classes[i % len(target_classes)] for i in range(50)]
+            "label": [safe_classes[i % len(safe_classes)] for i in range(50)]
         }
     
     return pd.DataFrame(data)

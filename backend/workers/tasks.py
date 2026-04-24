@@ -10,6 +10,13 @@ from backend.pipelines.audio_pipeline import AudioClassificationPipeline
 from backend.pipelines.regression_pipeline import NumericRegressionPipeline
 import os
 
+def _normalize_target_classes(target_classes):
+    if isinstance(target_classes, list):
+        cleaned = [str(c).strip() for c in target_classes if str(c).strip()]
+        if cleaned:
+            return cleaned
+    return ["class_a", "class_b"]
+
 def get_pipeline(modality: str, task: str = "classification"):
     if task == "regression":
         return NumericRegressionPipeline()
@@ -36,9 +43,11 @@ def run_auto_train_pipeline(job_id: str):
         intent = job.intent or {}
         modality = intent.get("modality", "text")
         task_type = intent.get("task", "classification")
+        user_prompt = intent.get("user_prompt") or task_type
+        target_classes = _normalize_target_classes(intent.get("target_classes"))
         
         # 1. Fetch data (Auto mode always uses internet)
-        df = build_dataset(intent.get("task", ""), intent.get("target_classes", []), modality)
+        df = build_dataset(user_prompt, target_classes, modality)
         if df.empty:
             raise ValueError("No data fetched from internet")
             

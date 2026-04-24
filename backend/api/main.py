@@ -37,7 +37,9 @@ def interpret(req: TrainingRequest):
 @app.post("/auto-train", response_model=JobResponse)
 def auto_train(req: TrainingRequest, db: Session = Depends(get_db)):
     intent = interpret_intent(req.task)
-    job = Job(intent=intent.model_dump())
+    intent_payload = intent.model_dump()
+    intent_payload["user_prompt"] = req.task
+    job = Job(intent=intent_payload)
     db.add(job)
     db.commit()
     db.refresh(job)
@@ -51,6 +53,8 @@ async def train_manual(
     db: Session = Depends(get_db)
 ):
     intent = interpret_intent(task)
+    intent_payload = intent.model_dump()
+    intent_payload["user_prompt"] = task
     os.makedirs("uploads", exist_ok=True)
     dfs = []
     import pandas as pd
@@ -66,7 +70,7 @@ async def train_manual(
     merged_df = pd.concat(dfs, ignore_index=True)
     final_path = os.path.join("uploads", f"manual_merged_{uuid4().hex}.csv")
     merged_df.to_csv(final_path, index=False)
-    job = Job(intent=intent.model_dump())
+    job = Job(intent=intent_payload)
     db.add(job)
     db.commit()
     db.refresh(job)
