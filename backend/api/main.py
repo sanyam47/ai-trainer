@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Form
+from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Form, BackgroundTasks
 from typing import List
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -29,13 +29,19 @@ app.add_middleware(
 
 app.include_router(lab_router.router)
 
+
+def _use_local_background_fallback() -> bool:
+    # Filesystem Celery broker can stall on some cloud setups.
+    # On Render, prefer FastAPI background tasks for reliable execution.
+    return os.getenv("RENDER") == "true" and os.getenv("REDIS_URL") in (None, "")
+
 @app.post("/interpret")
 def interpret(req: TrainingRequest):
     intent = interpret_intent(req.task)
     return intent
 
 @app.post("/auto-train", response_model=JobResponse)
-def auto_train(req: TrainingRequest, db: Session = Depends(get_db)):
+def auto_train(req: TrainingRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     intent = interpret_intent(req.task)
     intent_payload = intent.model_dump()
     intent_payload["user_prompt"] = req.task
@@ -43,13 +49,17 @@ def auto_train(req: TrainingRequest, db: Session = Depends(get_db)):
     db.add(job)
     db.commit()
     db.refresh(job)
-    run_auto_train_pipeline.delay(job.id)
+    if _use_local_background_fallback():
+        background_tasks.add_task(run_auto_train_pipeline.run, job.id)
+    else:
+        run_auto_train_pipeline.delay(job.id)
     return JobResponse(job_id=job.id, status=job.status, message="Job queued successfully")
 
 @app.post("/train/manual", response_model=JobResponse)
 async def train_manual(
     task: str = Form(...),
     files: List[UploadFile] = File(...),
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db)
 ):
     intent = interpret_intent(task)
@@ -74,7 +84,10 @@ async def train_manual(
     db.add(job)
     db.commit()
     db.refresh(job)
-    run_manual_train_pipeline.delay(job.id, final_path)
+    if _use_local_background_fallback():
+        background_tasks.add_task(run_manual_train_pipeline.run, job.id, final_path)
+    else:
+        run_manual_train_pipeline.delay(job.id, final_path)
     return JobResponse(job_id=job.id, status=job.status, message="Manual training queued")
 
 @app.get("/jobs/{job_id}", response_model=JobStatusResponse)
