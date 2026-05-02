@@ -30,6 +30,22 @@ app.add_middleware(
 app.include_router(lab_router.router)
 
 
+@app.get("/debug/gemini")
+def debug_gemini():
+    from backend.core.gemini_client import _call_gemini, gemini_available
+    from backend.core.config import settings
+    try:
+        if not gemini_available():
+            return {"status": "error", "message": "gemini_available() is False. API Key missing?", "key_starts_with": str(settings.GEMINI_API_KEY)[:5]}
+        
+        # Test a raw call
+        res = _call_gemini("Say 'hello world'")
+        return {"status": "success", "response": res}
+    except Exception as e:
+        import traceback
+        return {"status": "error", "message": str(e), "traceback": traceback.format_exc()}
+
+
 def _use_local_background_fallback() -> bool:
     # Filesystem Celery broker can stall on some cloud setups.
     # On Render, prefer FastAPI background tasks for reliable execution.
