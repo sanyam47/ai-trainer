@@ -73,9 +73,9 @@ def auto_train(req: TrainingRequest, background_tasks: BackgroundTasks, db: Sess
 
 @app.post("/train/manual", response_model=JobResponse)
 async def train_manual(
+    background_tasks: BackgroundTasks,
     task: str = Form(...),
     files: List[UploadFile] = File(...),
-    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db)
 ):
     intent = interpret_intent(task)
