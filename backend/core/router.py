@@ -13,6 +13,9 @@ def interpret_intent(user_text: str) -> IntentAnalysis:
             result = interpret_intent_gemini(user_text)
             return IntentAnalysis(**result)
     except Exception as e:
+        if "429" in str(e):
+            from fastapi import HTTPException
+            raise HTTPException(status_code=429, detail="Google API Rate Limit Reached. Please wait 60 seconds.")
         print(f"Gemini intent failed, trying fallback: {e}")
 
     # --- 2. Try OpenAI (if enabled) ---

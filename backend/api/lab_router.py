@@ -134,6 +134,9 @@ def analyze_lab_instruction(req: LabRequest):
             return LabAnalysis(**result)
         raise RuntimeError("Gemini not available")
     except Exception as e:
+        if "429" in str(e):
+            from fastapi import HTTPException
+            raise HTTPException(status_code=429, detail="Google API Rate Limit Reached. Please wait 60 seconds.")
         # Fallback smarter keyword & set-logic
         text = req.instruction.lower()
         
@@ -203,6 +206,9 @@ def refine_lab_instruction(req: LabChatRequest):
             return LabAnalysis(**result)
         raise RuntimeError("Gemini not available")
     except Exception as e:
+        if "429" in str(e):
+            from fastapi import HTTPException
+            raise HTTPException(status_code=429, detail="Google API Rate Limit Reached. Please wait 60 seconds.")
         # Smart Offline Fallback for Chat
         analysis = req.previous_analysis.model_dump()
         text = req.feedback.lower()

@@ -172,6 +172,11 @@ async function interpret() {
         body: JSON.stringify({task: userPrompt})
     });
 
+    if (res.status === 429) {
+        alert("Google AI Rate Limit Reached. Please wait 60 seconds.");
+        return;
+    }
+
     let data = await res.json();
     detectedTask = data.task;
 
@@ -391,6 +396,12 @@ async function analyzeLab() {
             })
         });
         
+        if (res.status === 429) {
+            alert("Google AI Rate Limit Reached. Please wait 60 seconds.");
+            resultDiv.innerHTML = "❌ Rate Limit Reached.";
+            return;
+        }
+        
         currentLabAnalysis = await res.json();
         
         document.getElementById("labActionText").innerHTML = 
@@ -456,6 +467,12 @@ async function sendLabFeedback() {
                 history: [] 
             })
         });
+        
+        if (res.status === 429) {
+            alert("Google AI Rate Limit Reached. Please wait 60 seconds.");
+            resultDiv.innerHTML = "❌ Rate Limit Reached.";
+            return;
+        }
         
         currentLabAnalysis = await res.json();
         
