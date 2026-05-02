@@ -4,6 +4,7 @@ import os
 class Settings(BaseSettings):
     USE_OPENAI: bool = False
     OPENAI_API_KEY: str = "FILL_ME_IN"
+    GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "FILL_ME_IN")
     SERP_API_KEY: str = "FILL_ME_IN"
     
     # Prefer REDIS_URL in cloud, fallback to local filesystem/sqlite setup.

@@ -96,21 +96,42 @@ def build_dataset(prompt: str, target_classes: list, modality: str = "text"):
         safe_classes = ["class_a", "class_b"]
 
     if modality == "image":
-        # Create dummy image metadata
         data = {
             "image_path": [f"demo_{i}.jpg" for i in range(50)],
             "label": [safe_classes[i % len(safe_classes)] for i in range(50)]
         }
+        return pd.DataFrame(data)
+
     elif modality == "audio":
         data = {
             "audio_path": [f"demo_{i}.wav" for i in range(50)],
             "label": [safe_classes[i % len(safe_classes)] for i in range(50)]
         }
+        return pd.DataFrame(data)
+
     else:
-        # Default Text
-        data = {
-            "text": [f"Sample text for {prompt} - {i}" for i in range(50)],
-            "label": [safe_classes[i % len(safe_classes)] for i in range(50)]
+        # Text - try Gemini for realistic synthetic data
+        try:
+            from backend.core.gemini_client import generate_training_data_gemini, gemini_available
+            if gemini_available():
+                print(f"Using Gemini to generate training data for: {safe_classes}")
+                samples = generate_training_data_gemini(prompt, safe_classes, samples_per_class=25)
+                if samples:
+                    return pd.DataFrame(samples)
+        except Exception as e:
+            print(f"Gemini data generation failed, using fallback: {e}")
+
+        # Fallback: better dummy data with class-specific phrases
+        rows = []
+        templates = {
+            "spam": ["Win a free {cls} now!", "Urgent: claim your {cls} prize", "Click here for {cls} deal"],
+            "ham": ["Hey, are you free today?", "Meeting at 3pm", "Thanks for your help"],
+            "positive": ["I love this product!", "Amazing experience", "Highly recommend"],
+            "negative": ["Terrible service", "Very disappointed", "Would not recommend"],
         }
-    
-    return pd.DataFrame(data)
+        for i in range(50):
+            cls = safe_classes[i % len(safe_classes)]
+            tmpl = templates.get(cls, [f"This is a {cls} example text sample"])
+            text = tmpl[i % len(tmpl)].replace("{cls}", cls)
+            rows.append({"text": text, "label": cls})
+        return pd.DataFrame(rows)

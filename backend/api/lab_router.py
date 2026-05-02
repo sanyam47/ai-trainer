@@ -10,12 +10,11 @@ from backend.db.models import Job
 from backend.core.schemas import LabRequest, LabAnalysis, JobResponse, LabChatRequest, LabExecutionRequest, LabPredictRequest
 from backend.core.config import settings
 from backend.core.data_validator import DataValidator
-from openai import OpenAI
 import json
 from backend.core.paths import MODELS_DIR, LAB_SESSIONS_DIR
+from backend.core.gemini_client import analyze_lab_instruction_gemini, refine_lab_chat_gemini, gemini_available
 
 router = APIRouter(prefix="/lab", tags=["Model Lab"])
-client = OpenAI(api_key=settings.OPENAI_API_KEY) if settings.USE_OPENAI else None
 validator = DataValidator()
 
 @router.post("/inject")
@@ -130,17 +129,10 @@ def analyze_lab_instruction(req: LabRequest):
     """
     
     try:
-        if client is None:
-            raise RuntimeError("OpenAI disabled by configuration")
-        completion = client.beta.chat.completions.parse(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": "You are a model manipulation expert. Analyze instructions and return a structured plan."},
-                {"role": "user", "content": prompt}
-            ],
-            response_format=LabAnalysis,
-        )
-        return completion.choices[0].message.parsed
+        if gemini_available():
+            result = analyze_lab_instruction_gemini(req.model_name, current_classes, req.instruction)
+            return LabAnalysis(**result)
+        raise RuntimeError("Gemini not available")
     except Exception as e:
         # Fallback smarter keyword & set-logic
         text = req.instruction.lower()
@@ -206,17 +198,10 @@ def refine_lab_instruction(req: LabChatRequest):
     """
     
     try:
-        if client is None:
-            raise RuntimeError("OpenAI disabled by configuration")
-        completion = client.beta.chat.completions.parse(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": "You are a model manipulation expert. Refine the edit plan based on conversation history and feedback."},
-                {"role": "user", "content": prompt}
-            ],
-            response_format=LabAnalysis,
-        )
-        return completion.choices[0].message.parsed
+        if gemini_available():
+            result = refine_lab_chat_gemini(req.previous_analysis.model_dump(), req.feedback)
+            return LabAnalysis(**result)
+        raise RuntimeError("Gemini not available")
     except Exception as e:
         # Smart Offline Fallback for Chat
         analysis = req.previous_analysis.model_dump()

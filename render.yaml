@@ -8,6 +8,8 @@ services:
     envVars:
       - key: USE_OPENAI
         value: "false"
+      - key: GEMINI_API_KEY
+        sync: false
       - key: OPENAI_API_KEY
         sync: false
       - key: SERP_API_KEY
