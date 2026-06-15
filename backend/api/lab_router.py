@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, BackgroundTasks
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from typing import List
@@ -134,9 +134,6 @@ def analyze_lab_instruction(req: LabRequest):
             return LabAnalysis(**result)
         raise RuntimeError("Gemini not available")
     except Exception as e:
-        if "429" in str(e):
-            from fastapi import HTTPException
-            raise HTTPException(status_code=429, detail="Google API Rate Limit Reached. Please wait 60 seconds.")
         # Fallback smarter keyword & set-logic
         text = req.instruction.lower()
         
@@ -206,9 +203,6 @@ def refine_lab_instruction(req: LabChatRequest):
             return LabAnalysis(**result)
         raise RuntimeError("Gemini not available")
     except Exception as e:
-        if "429" in str(e):
-            from fastapi import HTTPException
-            raise HTTPException(status_code=429, detail="Google API Rate Limit Reached. Please wait 60 seconds.")
         # Smart Offline Fallback for Chat
         analysis = req.previous_analysis.model_dump()
         text = req.feedback.lower()
@@ -319,9 +313,9 @@ async def live_prediction(
         raise HTTPException(status_code=500, detail=f"Prediction failed: {str(e)}")
 
 @router.post("/execute", response_model=JobResponse)
-def execute_lab_action(req: LabExecutionRequest, db: Session = Depends(get_db)):
+def execute_lab_action(req: LabExecutionRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     """Triggers the background task to perform the model manipulation."""
-    from backend.workers.tasks import run_refine_pipeline
+    from backend.workers.tasks import run_refine_pipeline_local
     
     # 1. Calculate Versioning
     base_name = req.model_name.split("_v")[0].replace(".pkl", "")
@@ -350,7 +344,7 @@ def execute_lab_action(req: LabExecutionRequest, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(job)
     
-    run_refine_pipeline.delay(job.id)
+    run_refine_pipeline_local(job.id)
     
     return JobResponse(
         job_id=job.id,

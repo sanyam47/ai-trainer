@@ -156,6 +156,59 @@ Return ONLY the label word, nothing else. Must be one of: {target_classes}"""
 def generate_training_data_gemini(prompt: str, target_classes: list, samples_per_class: int = 20) -> list:
     """Generate realistic synthetic training text data using Gemini."""
     all_data = []
+    
+    # Offline templates for fallback during rate limits
+    offline_templates = {
+        "spam": [
+            "You have won a lottery, click here to claim your prize!",
+            "Urgent: your account has been suspended. Please verify your details.",
+            "Get a 50% discount on all products using coupon code WIN50",
+            "Congratulations, you are selected for a free gift card.",
+            "Make money fast working from home, guaranteed returns!",
+            "Cheap meds online, no prescription needed.",
+            "Meet hot singles in your area tonight.",
+            "Your package could not be delivered, pay the shipping fee here.",
+            "Special promotion just for you, don't miss out on this deal.",
+            "Increase your followers by 10k today!"
+        ],
+        "important": [
+            "Please review the attached invoice for your recent purchase.",
+            "Reminder: Team meeting tomorrow at 10 AM in conference room B.",
+            "Your password was successfully updated. If this wasn't you, contact support.",
+            "Project deadline has been extended to next Friday.",
+            "Here are the meeting notes from yesterday's discussion.",
+            "Can you please approve the budget proposal by EOD?",
+            "Your flight booking is confirmed. Here is your itinerary.",
+            "Important update regarding your healthcare benefits.",
+            "Action required: Please sign the attached document.",
+            "The system will be down for maintenance this weekend.",
+            "Congratulations on your promotion to Senior Analyst!",
+            "You have been selected for the role of intern at our company.",
+            "We are pleased to inform you that you have been selected for the interview.",
+            "Congratulations, your application for the role has been accepted."
+        ],
+        "positive": [
+            "I absolutely loved this product! Highly recommended.",
+            "Great service, very fast and efficient.",
+            "The food was delicious and the atmosphere was perfect.",
+            "I'm so happy with my purchase, it exceeded my expectations.",
+            "This is the best movie I've seen all year."
+        ],
+        "negative": [
+            "Terrible experience, I will never buy from here again.",
+            "The item arrived broken and customer service was useless.",
+            "I hated this book, completely waste of time.",
+            "Food was cold and tasteless. Do not go here.",
+            "Worst purchase I have ever made, completely defective."
+        ],
+        "neutral": [
+            "The package arrived on time.",
+            "It is okay, nothing special but it works.",
+            "I bought this yesterday.",
+            "The color is exactly as shown in the picture.",
+            "Standard quality, exactly what you would expect."
+        ]
+    }
 
     for cls in target_classes:
         gen_prompt = f"""Generate {samples_per_class} realistic, diverse example texts for a "{cls}" classification.
@@ -172,11 +225,28 @@ Generate {samples_per_class} examples now:"""
         try:
             text = _call_gemini(gen_prompt)
             lines = [l.strip() for l in text.split('\n') if l.strip() and len(l.strip()) > 5]
+            if len(lines) < 2:
+                raise ValueError("Not enough data generated")
             for line in lines[:samples_per_class]:
                 all_data.append({"text": line, "label": cls})
         except Exception as e:
             print(f"Gemini data gen error for class {cls}: {e}")
-            for i in range(samples_per_class):
-                all_data.append({"text": f"Example {cls} text sample {i}", "label": cls})
+            
+            # Find the best offline template
+            cls_lower = cls.lower()
+            matched_template = None
+            for key, templates in offline_templates.items():
+                if key in cls_lower:
+                    matched_template = templates
+                    break
+            
+            if matched_template:
+                for i in range(samples_per_class):
+                    # Duplicate and vary slightly
+                    base_text = matched_template[i % len(matched_template)]
+                    all_data.append({"text": f"{base_text} (sample {i})", "label": cls})
+            else:
+                for i in range(samples_per_class):
+                    all_data.append({"text": f"This is an example text relating to the topic of {cls} - sample {i}", "label": cls})
 
     return all_data

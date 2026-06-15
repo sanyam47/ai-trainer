@@ -142,3 +142,42 @@ def run_refine_pipeline(job_id: str):
     
     db.commit()
     db.close()
+
+
+# Plain (non-Celery) version for direct background execution without a worker process.
+# Used by FastAPI BackgroundTasks on Render and locally so the offline fallback
+# code is always picked up without restarting a Celery worker.
+def run_refine_pipeline_local(job_id: str):
+    """Identical logic to run_refine_pipeline but runs in the FastAPI process."""
+    db: Session = SessionLocal()
+    job = db.query(Job).filter(Job.id == job_id).first()
+    if not job:
+        db.close()
+        return
+
+    job.status = "running"
+    db.commit()
+
+    try:
+        from backend.pipelines.refine_pipeline import RefinePipeline
+        data = job.intent
+        model_name = data.get("model_name")
+
+        refiner = RefinePipeline(model_name)
+        model_path, accuracy, report = refiner.execute(data)
+
+        if model_path:
+            job.status = "completed"
+            job.model_path = os.path.basename(model_path)
+            job.accuracy = report
+            job.message = "Refinement complete. Comparison report generated."
+        else:
+            job.status = "failed"
+            job.message = "Pipeline returned no model path."
+
+    except Exception as e:
+        job.status = "failed"
+        job.message = str(e)
+
+    db.commit()
+    db.close()

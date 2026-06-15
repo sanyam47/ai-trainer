@@ -47,9 +47,9 @@ def debug_gemini():
 
 
 def _use_local_background_fallback() -> bool:
-    # Filesystem Celery broker can stall on some cloud setups.
-    # On Render, prefer FastAPI background tasks for reliable execution.
-    return os.getenv("RENDER") == "true" and os.getenv("REDIS_URL") in (None, "")
+    # Always use FastAPI background tasks locally so that --reload picks up code changes
+    # without needing to restart the Celery worker.
+    return True
 
 @app.post("/interpret")
 def interpret(req: TrainingRequest):

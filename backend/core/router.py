@@ -13,9 +13,6 @@ def interpret_intent(user_text: str) -> IntentAnalysis:
             result = interpret_intent_gemini(user_text)
             return IntentAnalysis(**result)
     except Exception as e:
-        if "429" in str(e):
-            from fastapi import HTTPException
-            raise HTTPException(status_code=429, detail="Google API Rate Limit Reached. Please wait 60 seconds.")
         print(f"Gemini intent failed, trying fallback: {e}")
 
     # --- 2. Try OpenAI (if enabled) ---
@@ -57,17 +54,28 @@ def interpret_intent(user_text: str) -> IntentAnalysis:
     # Smart class extraction - look for "X vs Y", "X or Y", "X and Y" patterns
     import re
     found_classes = []
+    
+    stop_words = {"the", "and", "for", "its", "this", "that", "message", "model", "between", "differentiate", "classify", "detect"}
 
-    # Pattern: "between X and Y", "X vs Y", "X or Y"
-    vs_pattern = re.findall(r'\b(\w+)\s+(?:vs|versus|or|and)\s+(\w+)\b', text)
-    for pair in vs_pattern:
-        for w in pair:
-            if len(w) > 2 and w not in {"the", "and", "for", "its", "this", "that"}:
-                found_classes.append(w)
+    # Pattern: "between X and Y"
+    between_match = re.search(r'between\s+(.+?)\s+and\s+([\w\s]+)', text)
+    if between_match:
+        w1 = between_match.group(1).strip()
+        w2 = between_match.group(2).strip()
+        found_classes.extend([w1, w2])
+    else:
+        # Pattern: "X vs Y", "X or Y", "X and Y"
+        vs_pattern = re.findall(r'\b(\w+)\s+(?:vs|versus|or|and)\s+(\w+)\b', text)
+        for pair in vs_pattern:
+            for w in pair:
+                if len(w) > 2 and w not in stop_words:
+                    found_classes.append(w)
 
     # Pattern: "classify as X" or "detect X"
     classify_pattern = re.findall(r'(?:classify|detect|identify|recognize)\s+(?:as\s+)?(\w+)', text)
-    found_classes.extend(classify_pattern)
+    for w in classify_pattern:
+        if w not in stop_words:
+            found_classes.append(w)
 
     # Common domain classes
     domain_classes = {
@@ -80,8 +88,10 @@ def interpret_intent(user_text: str) -> IntentAnalysis:
         "cancer": "cancer", "benign": "benign", "malignant": "malignant",
     }
     for k, v in domain_classes.items():
-        if k in text and v not in found_classes:
-            found_classes.append(v)
+        if k in text:
+            # Avoid adding duplicate domain classes if they are already part of a found multi-word class
+            if not any(v == c or f"{v} " in c or f" {v}" in c for c in found_classes):
+                found_classes.append(v)
 
     # Deduplicate and clean
     seen = set()
